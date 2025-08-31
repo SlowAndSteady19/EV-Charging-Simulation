@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EV Charging Simulation</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="form-container">
+      <h1>EV Charging Simulation</h1>
+      <form id="ev-form">
+        <label for="source">Source (Latitude, Longitude):</label>
+        <input type="text" id="source" name="source" placeholder="e.g. 13.0827,80.2707" required>
+        
+        <label for="destination">Destination (Latitude, Longitude):</label>
+        <input type="text" id="destination" name="destination" placeholder="e.g. 13.067439,80.237617" required>
+        
+        <label for="battery">Battery Percentage (%):</label>
+        <input type="number" id="battery" name="battery" min="0" max="100" required>
+        
+        <button type="submit">Calculate Route</button>
+      </form>
+      <div id="result"></div>
+    </div>
+    
+    <div class="map-container">
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

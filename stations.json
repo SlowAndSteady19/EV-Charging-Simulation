@@ -1,0 +1,26 @@
+{
+  "stations": [
+    { "name": "Egmore EV Charging Station", "lat": 13.0675, "lon": 80.2376 },
+    { "name": "Royapettah EV Charging Station", "lat": 13.0827, "lon": 80.2707 },
+    { "name": "Teynampet EV Charging Station", "lat": 13.0470, "lon": 80.2086 },
+    { "name": "Alwarpet EV Charging Station", "lat": 13.0334, "lon": 80.2485 },
+    { "name": "Triplicane EV Charging Station", "lat": 13.0836, "lon": 80.2894 },
+    { "name": "Adyar EV Charging Station", "lat": 13.0095, "lon": 80.2152 },
+    { "name": "Thousand Lights EV Charging Station", "lat": 13.0500, "lon": 80.2800 },
+    { "name": "Mylapore EV Charging Station", "lat": 13.0982, "lon": 80.2163 },
+    { "name": "Nungambakkam EV Charging Station", "lat": 13.0761, "lon": 80.2521 },
+    { "name": "Kodambakkam EV Charging Station", "lat": 13.0955, "lon": 80.2645 },
+    { "name": "George Town EV Charging Station", "lat": 13.0878, "lon": 80.2785 },
+    { "name": "Coimbatore EV Charging Station", "lat": 11.0168, "lon": 76.9558 },
+    { "name": "Madurai EV Charging Station", "lat": 9.9253, "lon": 78.1198 },
+    { "name": "Trichy EV Charging Station", "lat": 10.7900, "lon": 78.7043 },
+    { "name": "Erode EV Charging Station", "lat": 11.3410, "lon": 77.7170 },
+    { "name": "Salem EV Charging Station", "lat": 11.6643, "lon": 78.1460 },
+    { "name": "Tirunelveli EV Charging Station", "lat": 8.7300, "lon": 77.7170 },
+    { "name": "Vellore EV Charging Station", "lat": 12.9167, "lon": 79.1333 },
+    { "name": "Chidambaram EV Charging Station", "lat": 11.4000, "lon": 79.7000 },
+    { "name": "Pudukkottai EV Charging Station", "lat": 10.2167, "lon": 78.6833 },
+    { "name": "Kanchipuram EV Charging Station", "lat": 12.8313, "lon": 79.7040 },
+    { "name": "Rajapalayam EV Charging Station", "lat": 9.3978, "lon": 77.5610 }
+  ]
+}
