@@ -42,11 +42,12 @@ body {
   padding: 30px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-start;
   position: relative;
   z-index: 1;
   animation: slideIn 1s ease forwards;
+  overflow-y: auto;
 }
 
 @keyframes slideIn {
@@ -62,15 +63,20 @@ h1 {
 label {
   font-size: 0.9rem;
   margin-bottom: 5px;
+  margin-top: 10px;
   font-weight: bold;
   color: #f0f0f0;
+}
+
+label:first-of-type {
+  margin-top: 0;
 }
 
 input[type="text"],
 input[type="number"] {
   width: 100%;
   padding: 12px;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   border: none;
   border-radius: 8px;
   outline: none;
@@ -89,6 +95,7 @@ input[type="number"]:focus {
 button {
   width: 100%;
   padding: 12px;
+  margin-top: 15px;
   font-size: 1rem;
   color: #1d2b64;
   background-color: #f8cdda;
@@ -109,10 +116,32 @@ button:active {
 
 /* Result Message */
 #result {
-  margin-top: 15px;
-  font-size: 1rem;
-  font-weight: bold;
-  color: #28a745;
+  margin-top: 20px;
+  padding: 15px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid #28a745;
+  width: 100%;
+}
+
+#result p {
+  margin: 8px 0;
+  padding: 0;
+}
+
+#result p:first-child {
+  margin-top: 0;
+}
+
+#result p:last-child {
+  margin-bottom: 0;
+}
+
+#result strong {
+  color: #f8cdda;
+  font-weight: 600;
 }
 
 /* Map Container */
@@ -147,22 +176,71 @@ input, label, button {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Suggestions Dropdown */
 .suggestions-dropdown {
   position: absolute;
   background: white;
   border: 1px solid #ddd;
+  border-radius: 8px;
   max-height: 200px;
   overflow-y: auto;
-  width: 100%;
+  width: calc(100% - 60px);
   z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: -10px;
 }
 
 .suggestion-item {
-  padding: 10px;
+  padding: 10px 12px;
   cursor: pointer;
-  color: black; /* Set text color to black */
+  color: #333;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #eee;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
 }
 
 .suggestion-item:hover {
   background: #f0f0f0;
+}
+
+/* Scrollbar Styling for Form Container */
+.form-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.form-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.form-container::-webkit-scrollbar-thumb {
+  background: rgba(248, 205, 218, 0.5);
+  border-radius: 10px;
+}
+
+.form-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(248, 205, 218, 0.8);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+    width: 95%;
+    height: 95vh;
+  }
+  
+  .form-container {
+    width: 100%;
+    height: 50%;
+  }
+  
+  .map-container {
+    width: 100%;
+    height: 50%;
+  }
 }
