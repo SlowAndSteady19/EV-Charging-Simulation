@@ -124,11 +124,11 @@ button:active {
   border-radius: 8px;
   border-left: 4px solid #28a745;
   width: 100%;
-  display: none; /* Hidden by default */
+  display: none;
 }
 
 #result.show {
-  display: block; /* Show when results are available */
+  display: block;
 }
 
 #result p {
