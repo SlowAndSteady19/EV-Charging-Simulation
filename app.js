@@ -408,6 +408,28 @@ document.getElementById('ev-form').addEventListener('submit', async function (e)
         document.getElementById('result').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
     }
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // // API Key
 // const apiKey = '5b3ce3597851110001cf62482476ed8df8234464b22b5a408706f90c';
 
