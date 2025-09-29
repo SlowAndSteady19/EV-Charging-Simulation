@@ -79,17 +79,20 @@ async function calculateRoute(source, destination, battery) {
             coordinates: [
                 [source[1], source[0]], // [lon, lat]
                 [destination[1], destination[0]] // [lon, lat]
-            ]
+            ],
+            instructions: false,
+            geometry: true
         };
 
         console.log("Requesting route for:", body);
 
         // Fetch route data from OpenRouteService API
-        let response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car', {
+        let response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
             method: 'POST',
             headers: {
                 'Authorization': apiKey,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8'
             },
             body: JSON.stringify(body)
         });
@@ -101,9 +104,13 @@ async function calculateRoute(source, destination, battery) {
 
         let data = await response.json();
 
+        console.log("Full API Response:", JSON.stringify(data, null, 2));
+
         if (!data.routes || data.routes.length === 0) {
             throw new Error("No route found.");
         }
+
+        console.log("Route data:", data.routes[0]);
 
         // Extract route geometry
         const routeGeometry = data.routes[0].geometry;
@@ -401,7 +408,6 @@ document.getElementById('ev-form').addEventListener('submit', async function (e)
         document.getElementById('result').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
     }
 });
-
 // // API Key
 // const apiKey = '5b3ce3597851110001cf62482476ed8df8234464b22b5a408706f90c';
 
