@@ -79,110 +79,152 @@ async function calculateRoute(source, destination, battery) {
             coordinates: [
                 [source[1], source[0]], // [lon, lat]
                 [destination[1], destination[0]] // [lon, lat]
-            ],
-            instructions: false,
-            geometry: true
+            ]
         };
 
         console.log("Requesting route for:", body);
+        console.log("Source [lat, lon]:", source);
+        console.log("Destination [lat, lon]:", destination);
 
         // Fetch route data from OpenRouteService API
-        let response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
+        let response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car', {
             method: 'POST',
             headers: {
                 'Authorization': apiKey,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8'
+                'Content-Type': 'application/json; charset=utf-8',
+                'Accept': 'application/json, application/geo+json'
             },
             body: JSON.stringify(body)
         });
 
+        console.log("Response status:", response.status);
+        console.log("Response OK:", response.ok);
+
         if (!response.ok) {
             const errorText = await response.text();
+            console.error("API Error Response:", errorText);
             throw new Error("Error fetching route data: " + response.statusText + " - " + errorText);
         }
 
         let data = await response.json();
 
-        console.log("Full API Response:", JSON.stringify(data, null, 2));
+        console.log("=== API RESPONSE DEBUG ===");
+        console.log("Full API Response:", data);
+        console.log("Has routes?", !!data.routes);
+        console.log("Routes length:", data.routes ? data.routes.length : 0);
+        console.log("Has features?", !!data.features);
+        console.log("========================");
 
-        if (!data.routes || data.routes.length === 0) {
-            throw new Error("No route found.");
-        }
+        // Handle GeoJSON response format (features array)
+        if (data.features && data.features.length > 0) {
+            // GeoJSON format
+            const feature = data.features[0];
+            console.log("Using GeoJSON format");
+            
+            const routeGeometry = feature.geometry;
+            let routeCoordinates;
 
-        console.log("Route data:", data.routes[0]);
+            if (routeGeometry.type === 'LineString') {
+                routeCoordinates = routeGeometry.coordinates.map(coord => [coord[1], coord[0]]);
+            } else {
+                throw new Error("Unsupported GeoJSON geometry type: " + routeGeometry.type);
+            }
 
-        // Extract route geometry
-        const routeGeometry = data.routes[0].geometry;
+            // Get distance and duration from properties
+            let distance = feature.properties.segments[0].distance / 1000; // km
+            let duration = feature.properties.segments[0].duration / 60; // minutes
+            
+            drawRouteAndShowResults(routeCoordinates, distance, duration, battery, source);
+            
+        } else if (data.routes && data.routes.length > 0) {
+            // Standard routes format
+            console.log("Using standard routes format");
+            
+            const routeGeometry = data.routes[0].geometry;
         let routeCoordinates;
 
-        console.log("Geometry type:", typeof routeGeometry);
-        console.log("Geometry data:", routeGeometry);
+            console.log("Geometry type:", typeof routeGeometry);
+            console.log("Geometry data:", routeGeometry);
 
-        if (typeof routeGeometry === 'string') {
-            // Encoded polyline string
-            routeCoordinates = decodePolyline(routeGeometry);
-        } else if (routeGeometry && routeGeometry.type === 'LineString') {
-            // GeoJSON LineString: coordinates are [lon, lat], need to swap to [lat, lon]
-            routeCoordinates = routeGeometry.coordinates.map(coord => [coord[1], coord[0]]);
-        } else if (routeGeometry && routeGeometry.coordinates) {
-            // Try to extract coordinates directly
-            routeCoordinates = routeGeometry.coordinates.map(coord => [coord[1], coord[0]]);
-        } else if (Array.isArray(routeGeometry)) {
-            // Direct array of coordinates
-            routeCoordinates = routeGeometry.map(coord => [coord[1], coord[0]]);
+            let routeCoordinates;
+            if (typeof routeGeometry === 'string') {
+                // Encoded polyline string
+                routeCoordinates = decodePolyline(routeGeometry);
+            } else if (routeGeometry && routeGeometry.type === 'LineString') {
+                // GeoJSON LineString: coordinates are [lon, lat], need to swap to [lat, lon]
+                routeCoordinates = routeGeometry.coordinates.map(coord => [coord[1], coord[0]]);
+            } else if (routeGeometry && routeGeometry.coordinates) {
+                // Try to extract coordinates directly
+                routeCoordinates = routeGeometry.coordinates.map(coord => [coord[1], coord[0]]);
+            } else if (Array.isArray(routeGeometry)) {
+                // Direct array of coordinates
+                routeCoordinates = routeGeometry.map(coord => [coord[1], coord[0]]);
+            } else {
+                console.error("Full API response:", JSON.stringify(data, null, 2));
+                throw new Error("Unsupported geometry format. Check console for details.");
+            }
+
+            // Calculate distance, time, and battery consumption
+            let distance = data.routes[0].summary.distance / 1000; // km
+            let duration = data.routes[0].summary.duration / 60; // minutes
+            
+            drawRouteAndShowResults(routeCoordinates, distance, duration, battery, source);
+            
         } else {
-            console.error("Full API response:", JSON.stringify(data, null, 2));
-            throw new Error("Unsupported geometry format. Check console for details.");
+            console.error("No routes in response. Full data:", data);
+            if (data.error) {
+                throw new Error("API Error: " + JSON.stringify(data.error));
+            }
+            throw new Error("No route found in API response. Check console for details.");
         }
-
-        // Draw the route on the map
-        const routeLine = L.polyline(routeCoordinates, {
-            color: '#4285F4',
-            weight: 6,
-            opacity: 0.8,
-            lineCap: 'round',
-            lineJoin: 'round'
-        }).addTo(routeLayer);
-
-        // Add outline for better visibility
-        L.polyline(routeCoordinates, {
-            color: '#1a73e8',
-            weight: 8,
-            opacity: 0.4
-        }).addTo(routeLayer);
-
-        // Calculate distance, time, and battery consumption
-        let distance = data.routes[0].summary.distance / 1000; // km
-        let duration = data.routes[0].summary.duration / 60; // minutes
-        let batteryConsumptionPerKm = 0.2; // 0.2% per km
-        let batteryNeeded = distance * batteryConsumptionPerKm;
-
-        // Show the results
-        const resultDiv = document.getElementById('result');
-        if (batteryNeeded > battery) {
-            findNearestStation(source[0], source[1], batteryNeeded - battery);
-            resultDiv.innerHTML = `
-                <p><strong>Distance:</strong> ${distance.toFixed(2)} km</p>
-                <p><strong>Time:</strong> ${duration.toFixed(0)} minutes</p>
-                <p><strong>Battery needed:</strong> ${batteryNeeded.toFixed(1)}%</p>
-                <p style="color: #f44336;"><strong>⚠ Warning:</strong> You need to charge your vehicle!</p>
-            `;
-        } else {
-            resultDiv.innerHTML = `
-                <p><strong>Distance:</strong> ${distance.toFixed(2)} km</p>
-                <p><strong>Time:</strong> ${duration.toFixed(0)} minutes</p>
-                <p><strong>Battery needed:</strong> ${batteryNeeded.toFixed(1)}%</p>
-                <p style="color: #4caf50;">✓ You have enough battery (${battery}%) to reach your destination.</p>
-            `;
-        }
-
-        map.fitBounds(L.latLngBounds(routeCoordinates), { padding: [50, 50] });
 
     } catch (error) {
         console.error("Error calculating route:", error);
         document.getElementById('result').innerHTML = `<p style="color: #f44336;">Failed to calculate route: ${error.message}</p>`;
     }
+}
+
+// Helper function to draw route and show results
+function drawRouteAndShowResults(routeCoordinates, distance, duration, battery, source) {
+    // Draw the route on the map
+    const routeLine = L.polyline(routeCoordinates, {
+        color: '#4285F4',
+        weight: 6,
+        opacity: 0.8,
+        lineCap: 'round',
+        lineJoin: 'round'
+    }).addTo(routeLayer);
+
+    // Add outline for better visibility
+    L.polyline(routeCoordinates, {
+        color: '#1a73e8',
+        weight: 8,
+        opacity: 0.4
+    }).addTo(routeLayer);
+
+    let batteryConsumptionPerKm = 0.2; // 0.2% per km
+    let batteryNeeded = distance * batteryConsumptionPerKm;
+
+    // Show the results
+    const resultDiv = document.getElementById('result');
+    if (batteryNeeded > battery) {
+        findNearestStation(source[0], source[1], batteryNeeded - battery);
+        resultDiv.innerHTML = `
+            <p><strong>Distance:</strong> ${distance.toFixed(2)} km</p>
+            <p><strong>Time:</strong> ${duration.toFixed(0)} minutes</p>
+            <p><strong>Battery needed:</strong> ${batteryNeeded.toFixed(1)}%</p>
+            <p style="color: #f44336;"><strong>⚠ Warning:</strong> You need to charge your vehicle!</p>
+        `;
+    } else {
+        resultDiv.innerHTML = `
+            <p><strong>Distance:</strong> ${distance.toFixed(2)} km</p>
+            <p><strong>Time:</strong> ${duration.toFixed(0)} minutes</p>
+            <p><strong>Battery needed:</strong> ${batteryNeeded.toFixed(1)}%</p>
+            <p style="color: #4caf50;">✓ You have enough battery (${battery}%) to reach your destination.</p>
+        `;
+    }
+
+    map.fitBounds(L.latLngBounds(routeCoordinates), { padding: [50, 50] });
 }
 
 // Find nearest charging station
@@ -408,7 +450,6 @@ document.getElementById('ev-form').addEventListener('submit', async function (e)
         document.getElementById('result').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
     }
 });
-
 
 
 
