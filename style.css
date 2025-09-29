@@ -32,7 +32,7 @@ body {
   0% { opacity: 0; transform: scale(0.95); }
   100% { opacity: 1; transform: scale(1); }
 }
-/* Form Container /
+ Form Container /
 .form-container {
   width: 30%;
   background: 
@@ -150,7 +150,7 @@ input, label, button {
 .suggestion-item {
   padding: 10px;
   cursor: pointer;
-  color: black; / Set text color to black */
+  color: black; / Set text color to black 
 }
 .suggestion-item:hover {
   background: 
