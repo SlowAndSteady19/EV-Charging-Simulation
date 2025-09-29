@@ -109,11 +109,24 @@ async function calculateRoute(source, destination, battery) {
         const routeGeometry = data.routes[0].geometry;
         let routeCoordinates;
 
-        if (routeGeometry.type === 'LineString') {
+        console.log("Geometry type:", typeof routeGeometry);
+        console.log("Geometry data:", routeGeometry);
+
+        if (typeof routeGeometry === 'string') {
+            // Encoded polyline string
+            routeCoordinates = decodePolyline(routeGeometry);
+        } else if (routeGeometry && routeGeometry.type === 'LineString') {
             // GeoJSON LineString: coordinates are [lon, lat], need to swap to [lat, lon]
             routeCoordinates = routeGeometry.coordinates.map(coord => [coord[1], coord[0]]);
+        } else if (routeGeometry && routeGeometry.coordinates) {
+            // Try to extract coordinates directly
+            routeCoordinates = routeGeometry.coordinates.map(coord => [coord[1], coord[0]]);
+        } else if (Array.isArray(routeGeometry)) {
+            // Direct array of coordinates
+            routeCoordinates = routeGeometry.map(coord => [coord[1], coord[0]]);
         } else {
-            throw new Error("Unsupported geometry format.");
+            console.error("Full API response:", JSON.stringify(data, null, 2));
+            throw new Error("Unsupported geometry format. Check console for details.");
         }
 
         // Draw the route on the map
@@ -205,6 +218,37 @@ function findNearestStation(lat, lon, extraBatteryNeeded) {
             }
         })
         .catch(error => console.error("Error finding nearest station:", error));
+}
+
+// Function to decode polyline string
+function decodePolyline(polyline) {
+    const coordinates = [];
+    let index = 0, len = polyline.length;
+    let lat = 0, lng = 0;
+
+    while (index < len) {
+        let b, shift = 0, result = 0;
+        do {
+            b = polyline.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        const dlat = (result >> 1) ^ -(result & 1);
+        lat += dlat;
+
+        shift = 0;
+        result = 0;
+        do {
+            b = polyline.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        const dlng = (result >> 1) ^ -(result & 1);
+        lng += dlng;
+
+        coordinates.push([lat / 1E5, lng / 1E5]); // [lat, lon]
+    }
+    return coordinates;
 }
 
 // Haversine distance calculation
@@ -357,10 +401,6 @@ document.getElementById('ev-form').addEventListener('submit', async function (e)
         document.getElementById('result').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
     }
 });
-
-
-
-
 
 // // API Key
 // const apiKey = '5b3ce3597851110001cf62482476ed8df8234464b22b5a408706f90c';
