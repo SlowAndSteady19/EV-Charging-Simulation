@@ -169,6 +169,7 @@ async function calculateRoute(source, destination, battery) {
 
         // Show results
         const resultDiv = document.getElementById('result');
+        resultDiv.classList.add('show');
         if (batteryNeeded > battery) {
             findNearestStation(source[0], source[1], batteryNeeded - battery);
             resultDiv.innerHTML = `
