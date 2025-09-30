@@ -201,19 +201,37 @@ async function calculateRoute(sourceInput, destinationInput, battery) {
 
         // Show the results
         const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = ` 
+    <p><strong>Total Distance:</strong> ${distance.toFixed(2)} km</p>
+    <p><strong>Time Required:</strong> ${duration.toFixed(2)} minutes</p>
+    <p><strong>Battery Required:</strong> ${batteryNeeded.toFixed(2)}%</p>
+`;
         if (batteryNeeded > battery) {
-            findNearestStation(source[0], source[1], batteryNeeded - battery);
-            resultDiv.innerHTML = `
-                <p>Distance: ${distance.toFixed(2)} km</p>
-                <p>Time: ${duration.toFixed(2)} minutes</p>
-                <p>Battery needed: ${batteryNeeded.toFixed(2)}%. You need to charge your vehicle.</p>
-            `;
-        } else {
-            resultDiv.innerHTML = `
-                <p>Distance: ${distance.toFixed(2)} km</p>
-                <p>Time: ${duration.toFixed(2)} minutes</p>
-                <p>You have enough battery to reach your destination. Battery needed: ${batteryNeeded.toFixed(2)}%</p>
-            `;
+
+            resultDiv.innerHTML += `
+        <p style="color:red; font-weight:bold;">
+            ❌ Insufficient battery. Please recharge before starting the trip.
+        </p>
+    `;
+    findNearestStation(source[0], source[1], batteryNeeded - battery);
+} else {
+    resultDiv.innerHTML += `
+        <p style="color:green; font-weight:bold;">
+            ✅ You have enough battery to reach your destination safely!
+        </p>
+    `;
+        //     findNearestStation(source[0], source[1], batteryNeeded - battery);
+        //     resultDiv.innerHTML = `
+        //         <p>Distance: ${distance.toFixed(2)} km</p>
+        //         <p>Time: ${duration.toFixed(2)} minutes</p>
+        //         <p>Battery needed: ${batteryNeeded.toFixed(2)}%. You need to charge your vehicle.</p>
+        //     `;
+        // } else {
+        //     resultDiv.innerHTML = `
+        //         <p>Distance: ${distance.toFixed(2)} km</p>
+        //         <p>Time: ${duration.toFixed(2)} minutes</p>
+        //         <p>You have enough battery to reach your destination. Battery needed: ${batteryNeeded.toFixed(2)}%</p>
+        //     `;
         }
 
         // Fit the map to show the entire route with padding
