@@ -416,21 +416,50 @@ document.addEventListener('click', (event) => {
 });
 
 // Modify form submit handler to extract coordinates from selected suggestions
-document.getElementById('ev-form').addEventListener('submit', function (e) {
+document.getElementById('ev-form').addEventListener('submit', async function (e) {
     e.preventDefault();
 
-    // Retrieve coordinates from the source and destination input elements
-    let sourceCoords = document.getElementById('source').getAttribute('data-coordinates');
-    let destinationCoords = document.getElementById('destination').getAttribute('data-coordinates');
+    let sourceInput = document.getElementById('source').value.trim();
+    let destinationInput = document.getElementById('destination').value.trim();
     let battery = parseFloat(document.getElementById('battery').value);
 
+    if (!sourceInput || !destinationInput || isNaN(battery)) {
+        alert("Please enter valid source, destination, and battery.");
+        return;
+    }
 
+    let sourceCoords, destinationCoords;
 
-    // Parse coordinates
-    sourceCoords = JSON.parse(sourceCoords);
-    destinationCoords = JSON.parse(destinationCoords);
+    // Check if user selected a suggestion (has data-coordinates)
+    const sourceData = document.getElementById('source').getAttribute('data-coordinates');
+    const destData = document.getElementById('destination').getAttribute('data-coordinates');
 
-    // Call function to mark locations and calculate route
+    if (sourceData) {
+        sourceCoords = JSON.parse(sourceData);
+    } else {
+        // Geocode manually typed place
+        try {
+            sourceCoords = await geocodePlaceName(sourceInput);
+        } catch (err) {
+            alert("Source place not found.");
+            return;
+        }
+    }
+
+    if (destData) {
+        destinationCoords = JSON.parse(destData);
+    } else {
+        // Geocode manually typed place
+        try {
+            destinationCoords = await geocodePlaceName(destinationInput);
+        } catch (err) {
+            alert("Destination place not found.");
+            return;
+        }
+    }
+
+    // Mark locations and calculate route
     markLocations([sourceCoords[1], sourceCoords[0]], [destinationCoords[1], destinationCoords[0]]);
     calculateRoute([sourceCoords[1], sourceCoords[0]], [destinationCoords[1], destinationCoords[0]], battery);
 });
+
