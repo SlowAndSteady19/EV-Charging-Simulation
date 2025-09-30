@@ -338,18 +338,39 @@ function displaySuggestions(inputElement, suggestions) {
 }
 
 async function handleInputChange(event) {
-    const query = event.target.value.trim();
+    const query = event.target.value.trim().toLowerCase();
     const inputElement = event.target;
 
-    if (query.length > 2) {
-        const suggestions = await getLocationSuggestions(query);
-        displaySuggestions(inputElement, suggestions);
-    } else {
-        const dropdown = inputElement.nextElementSibling;
-        if (dropdown && dropdown.classList.contains('suggestions-dropdown')) {
-            dropdown.remove();
-        }
+    // Load local station names
+    const response = await fetch('stations.json');
+    const stationsData = await response.json();
+
+    let matches = stationsData.stations.filter(station =>
+        station.name.toLowerCase().includes(query)
+    ).map(station => ({
+        name: station.name,
+        coordinates: [station.lon, station.lat] // [lng, lat]
+    }));
+
+    // If no local matches, fall back to OpenRouteService autocomplete
+    if (matches.length === 0 && query.length > 2) {
+        const orsSuggestions = await getLocationSuggestions(query);
+        matches = orsSuggestions;
     }
+
+    displaySuggestions(inputElement, matches);
+    // const query = event.target.value.trim();
+    // const inputElement = event.target;
+
+    // if (query.length > 2) {
+    //     const suggestions = await getLocationSuggestions(query);
+    //     displaySuggestions(inputElement, suggestions);
+    // } else {
+    //     const dropdown = inputElement.nextElementSibling;
+    //     if (dropdown && dropdown.classList.contains('suggestions-dropdown')) {
+    //         dropdown.remove();
+    //     }
+    // }
 }
 
 document.getElementById('source').addEventListener('input', handleInputChange);
