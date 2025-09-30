@@ -46,26 +46,26 @@ const destinationIcon = L.icon({
 });
 
 // Form submit event listener
-document.getElementById('ev-form').addEventListener('submit', function (e) {
-    e.preventDefault();
+// document.getElementById('ev-form').addEventListener('submit', function (e) {
+//     e.preventDefault();
 
-    // Get form values
-    let source = document.getElementById('source').value.split(",");
-    let destination = document.getElementById('destination').value.split(",");
-    let battery = parseFloat(document.getElementById('battery').value);
+//     // Get form values
+//     let source = document.getElementById('source').value.split(",");
+//     let destination = document.getElementById('destination').value.split(",");
+//     let battery = parseFloat(document.getElementById('battery').value);
 
-    // Validate input
-
-
-    // Convert string lat,lon to float
-    let sourceLat = parseFloat(source[0].trim()), sourceLon = parseFloat(source[1].trim());
-    let destinationLat = parseFloat(destination[0].trim()), destinationLon = parseFloat(destination[1].trim());
+//     // Validate input
 
 
-    // Call function to mark locations and calculate route
-    markLocations([sourceLat, sourceLon], [destinationLat, destinationLon]);
-    calculateRoute([sourceLat, sourceLon], [destinationLat, destinationLon], battery);
-});
+//     // Convert string lat,lon to float
+//     let sourceLat = parseFloat(source[0].trim()), sourceLon = parseFloat(source[1].trim());
+//     let destinationLat = parseFloat(destination[0].trim()), destinationLon = parseFloat(destination[1].trim());
+
+
+//     // Call function to mark locations and calculate route
+//     markLocations([sourceLat, sourceLon], [destinationLat, destinationLon]);
+//     calculateRoute([sourceLat, sourceLon], [destinationLat, destinationLon], battery);
+// });
 
 // Function to mark source and destination on the map
 function markLocations(source, destination) {
