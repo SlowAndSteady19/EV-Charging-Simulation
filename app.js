@@ -65,7 +65,7 @@ document.getElementById('ev-form').addEventListener('submit', function (e) {
 
 // Function to mark source and destination on the map
 function markLocations(source, destination) {
-    markersLayer.clearLayers();
+    //markersLayer.clearLayers();
 
     sourceMarker = L.marker([source[0], source[1]], { icon: sourceIcon })
         .addTo(markersLayer)
