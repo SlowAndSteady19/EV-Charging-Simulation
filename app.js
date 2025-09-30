@@ -196,7 +196,7 @@ async function calculateRoute(sourceInput, destinationInput, battery) {
         // Calculate distance, time, and battery consumption
         let distance = data.routes[0].summary.distance / 1000; // Convert meters to kilometers
         let duration = data.routes[0].summary.duration / 60; // Convert seconds to minutes
-        let batteryConsumptionPerKm = 0.2; // Define your own consumption rate
+        let batteryConsumptionPerKm = 0.5; // Define your own consumption rate
         let batteryNeeded = distance * batteryConsumptionPerKm;
 
         // Show the results
