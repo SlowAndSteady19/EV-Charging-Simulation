@@ -172,13 +172,20 @@ async function calculateRoute(source, destination, battery) {
         const resultDiv = document.getElementById('result');
         resultDiv.classList.add('show');
         if (batteryNeeded > battery) {
-            findNearestStation(source[0], source[1], batteryNeeded - battery);
-            resultDiv.innerHTML = `
-                <p><strong>Distance:</strong> ${distance.toFixed(2)} km</p>
-                <p><strong>Time:</strong> ${duration.toFixed(0)} minutes</p>
-                <p><strong>Battery needed:</strong> ${batteryNeeded.toFixed(1)}%</p>
-                <p style="color: #f44336;"><strong>⚠ Warning:</strong> You need to charge your vehicle!</p>
-            `;
+            findNearestStation(source[0], source[1], batteryNeeded - battery)
+        .then(nearestStationCoords => {
+            // Fetch route Source -> Nearest (red)
+            fetchRoute(source, nearestStationCoords, 'red');
+            // Fetch route Nearest -> Destination (green)
+            fetchRoute(nearestStationCoords, destination, 'green');
+        });
+            // findNearestStation(source[0], source[1], batteryNeeded - battery);
+            // resultDiv.innerHTML = `
+            //     <p><strong>Distance:</strong> ${distance.toFixed(2)} km</p>
+            //     <p><strong>Time:</strong> ${duration.toFixed(0)} minutes</p>
+            //     <p><strong>Battery needed:</strong> ${batteryNeeded.toFixed(1)}%</p>
+            //     <p style="color: #f44336;"><strong>⚠ Warning:</strong> You need to charge your vehicle!</p>
+            // `;
         } else {
             resultDiv.innerHTML = `
                 <p><strong>Distance:</strong> ${distance.toFixed(2)} km</p>
