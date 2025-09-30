@@ -18,46 +18,53 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 document.getElementById('map').style.height = '500px';
 document.getElementById('map').style.width = '100%';
 
-// Load EV charging stations from JSON (but don't display them initially)
-let stationsData = null;
+// Load EV charging stations from JSON
 fetch('stations.json')
     .then(response => response.json())
     .then(data => {
-        stationsData = data;
-        console.log("Stations loaded:", data.stations.length);
+        data.stations.forEach(station => {
+            L.marker([station.lat, station.lon])
+                .addTo(markersLayer)
+                .bindPopup(`${station.name}`);
+        });
     })
     .catch(error => console.error("Error fetching stations:", error));
 
-// Create custom icons
+// Create custom icons for source and destination markers
 const sourceIcon = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    iconUrl: 'source.png',
     iconSize: [25, 41],
     iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    shadowSize: [41, 41]
+    popupAnchor: [1, -34]
 });
 
 const destinationIcon = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    iconUrl: 'dest.png',
     iconSize: [25, 41],
     iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    shadowSize: [41, 41]
+    popupAnchor: [1, -34]
 });
 
-const chargingIcon = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    shadowSize: [41, 41]
+// Form submit event listener
+document.getElementById('ev-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    // Get form values
+    let source = document.getElementById('source').value.split(",");
+    let destination = document.getElementById('destination').value.split(",");
+    let battery = parseFloat(document.getElementById('battery').value);
+
+    // Convert string lat,lon to float
+    let sourceLat = parseFloat(source[0].trim()), sourceLon = parseFloat(source[1].trim());
+    let destinationLat = parseFloat(destination[0].trim()), destinationLon = parseFloat(destination[1].trim());
+
+    // Call function to mark locations and calculate route
+    markLocations([sourceLat, sourceLon], [destinationLat, destinationLon]);
+    calculateRoute([sourceLat, sourceLon], [destinationLat, destinationLon], battery);
 });
 
 // Function to mark source and destination on the map
-function markLocations(source, destination, chargingStation = null) {
+function markLocations(source, destination) {
     markersLayer.clearLayers();
 
     sourceMarker = L.marker([source[0], source[1]], { icon: sourceIcon })
@@ -67,240 +74,144 @@ function markLocations(source, destination, chargingStation = null) {
 
     destinationMarker = L.marker([destination[0], destination[1]], { icon: destinationIcon })
         .addTo(markersLayer)
-        .bindPopup('Destination');
+        .bindPopup('Destination')
+        .openPopup();
 
-    if (chargingStation) {
-        stationMarker = L.marker([chargingStation.lat, chargingStation.lon], { icon: chargingIcon })
-            .addTo(markersLayer)
-            .bindPopup(`<strong>Charging Station</strong><br>${chargingStation.name}`);
-        
-        const bounds = L.latLngBounds([source, [chargingStation.lat, chargingStation.lon], destination]);
-        map.fitBounds(bounds, { padding: [50, 50] });
-    } else {
-        const bounds = L.latLngBounds([source, destination]);
-        map.fitBounds(bounds, { padding: [50, 50] });
-    }
+    const bounds = L.latLngBounds([source, destination]);
+    map.fitBounds(bounds, { padding: [50, 50] });
 }
 
-// Function to calculate route
-async function calculateRoute(source, destination, battery) {
+// Function to handle place names and coordinates and calculate the route
+async function calculateRoute(sourceInput, destinationInput, battery) {
     routeLayer.clearLayers();
 
     try {
-        // Build URL with coordinates
-        const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${source[1]},${source[0]}&end=${destination[1]},${destination[0]}`;
-        
-        console.log("Request URL:", url);
+        let source, destination;
 
-        // Fetch route data
-        let response = await fetch(url);
+        if (isNaN(sourceInput[0]) || isNaN(sourceInput[1])) {
+            source = await geocodePlaceName(sourceInput);
+        } else {
+            source = sourceInput;
+        }
 
-        console.log("Response status:", response.status);
-        console.log("Response OK:", response.ok);
+        if (isNaN(destinationInput[0]) || isNaN(destinationInput[1])) {
+            destination = await geocodePlaceName(destinationInput);
+        } else {
+            destination = destinationInput;
+        }
+
+        let body = {
+            coordinates: [
+                [source[1], source[0]],
+                [destination[1], destination[0]]
+            ]
+        };
+
+        let response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car', {
+            method: 'POST',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error("API Error Response:", errorText);
-            throw new Error("API request failed: " + response.statusText);
+            throw new Error("Error fetching route data: " + response.statusText);
         }
 
         let data = await response.json();
 
-        console.log("=== API RESPONSE ===");
-        console.log(data);
-        console.log("Has features?", !!data.features);
-        console.log("Has routes?", !!data.routes);
-        console.log("===================");
-
-        let routeCoordinates, distance, duration;
-
-        // Check if response has features (GeoJSON format)
-        if (data.features && data.features.length > 0) {
-            console.log("Processing GeoJSON format");
-            const feature = data.features[0];
-            const geometry = feature.geometry;
-            
-            if (geometry.type === 'LineString') {
-                // Convert [lon, lat] to [lat, lon]
-                routeCoordinates = geometry.coordinates.map(coord => [coord[1], coord[0]]);
-            } else {
-                throw new Error("Unexpected geometry type: " + geometry.type);
-            }
-
-            // Extract distance and duration
-            if (feature.properties && feature.properties.summary) {
-                distance = feature.properties.summary.distance / 1000; // km
-                duration = feature.properties.summary.duration / 60; // minutes
-            } else if (feature.properties && feature.properties.segments) {
-                distance = feature.properties.segments[0].distance / 1000;
-                duration = feature.properties.segments[0].duration / 60;
-            } else {
-                throw new Error("Could not find distance/duration in response");
-            }
-        } 
-        // Check if response has routes array
-        else if (data.routes && data.routes.length > 0) {
-            console.log("Processing routes format");
-            const route = data.routes[0];
-            const geometry = route.geometry;
-
-            if (typeof geometry === 'string') {
-                // Encoded polyline
-                routeCoordinates = decodePolyline(geometry);
-            } else if (geometry.coordinates) {
-                routeCoordinates = geometry.coordinates.map(coord => [coord[1], coord[0]]);
-            } else {
-                throw new Error("Unknown geometry format");
-            }
-
-            distance = route.summary.distance / 1000;
-            duration = route.summary.duration / 60;
-        } else {
-            console.error("Unexpected API response format:", data);
-            throw new Error("No route data found in response");
+        if (!data.routes || data.routes.length === 0) {
+            throw new Error("No route found.");
         }
 
-        console.log("Route coordinates count:", routeCoordinates.length);
-        console.log("Distance:", distance, "km");
-        console.log("Duration:", duration, "minutes");
+        const routeGeometry = data.routes[0].geometry;
 
-        // Calculate battery consumption
-        let batteryConsumptionPerKm = 0.33;
+        let routeCoordinates;
+        if (typeof routeGeometry === 'string') {
+            routeCoordinates = decodePolyline(routeGeometry).map(coord => [coord[0], coord[1]]);
+        } else if (routeGeometry.type === 'LineString') {
+            routeCoordinates = routeGeometry.coordinates.map(coord => [coord[1], coord[0]]);
+        } else {
+            throw new Error("Unsupported geometry format.");
+        }
+
+        console.log("Route Coordinates: ", routeCoordinates);
+
+        const routeLine = L.polyline(routeCoordinates, {
+            color: '#00008B',
+            weight: 10,
+            opacity: 1,
+            lineCap: 'round',
+            lineJoin: 'round'
+        }).addTo(routeLayer);
+
+        L.polyline(routeCoordinates, {
+            color: 'white',
+            weight: 9,
+            opacity: 0.8
+        }).addTo(routeLayer);
+
+        routeLine.on('mouseover', function () {
+            this.setStyle({
+                weight: 8,
+                opacity: 1
+            });
+        });
+
+        routeLine.on('mouseout', function () {
+            this.setStyle({
+                weight: 5,
+                opacity: 1
+            });
+        });
+
+        let distance = data.routes[0].summary.distance / 1000;
+        let duration = data.routes[0].summary.duration / 60;
+        let batteryConsumptionPerKm = 0.2;
         let batteryNeeded = distance * batteryConsumptionPerKm;
 
-        // Show results
         const resultDiv = document.getElementById('result');
-        resultDiv.classList.add('show');
-        
         if (batteryNeeded > battery) {
-            // Find nearest charging station
-            const nearestStation = await findNearestStation(source[0], source[1]);
-            
-            if (nearestStation) {
-                // Calculate route to charging station
-                const routeToStation = await calculateSegmentRoute(source, [nearestStation.lat, nearestStation.lon]);
-                
-                // Calculate route from charging station to destination
-                const routeFromStation = await calculateSegmentRoute([nearestStation.lat, nearestStation.lon], destination);
-                
-                // Draw red route (source to charging station)
-                L.polyline(routeToStation.coordinates, {
-                    color: '#f44336',
-                    weight: 6,
-                    opacity: 0.8,
-                    lineCap: 'round',
-                    lineJoin: 'round'
-                }).addTo(routeLayer);
-
-                // Draw green route (charging station to destination)
-                L.polyline(routeFromStation.coordinates, {
-                    color: '#4caf50',
-                    weight: 6,
-                    opacity: 0.8,
-                    lineCap: 'round',
-                    lineJoin: 'round'
-                }).addTo(routeLayer);
-
-                // Mark locations with charging station
-                markLocations(source, destination, nearestStation);
-
-                const totalDistance = routeToStation.distance + routeFromStation.distance;
-                const totalDuration = routeToStation.duration + routeFromStation.duration;
-
-                resultDiv.innerHTML = `
-                    <p><strong>Total Distance:</strong> ${totalDistance.toFixed(2)} km</p>
-                    <p><strong>Total Time:</strong> ${totalDuration.toFixed(0)} minutes</p>
-                    <p><strong>Battery needed:</strong> ${batteryNeeded.toFixed(1)}%</p>
-                    <p style="color: #f44336;"><strong>⚠ Warning:</strong> You need to charge your vehicle!</p>
-                    <p><strong>Charging Station:</strong> ${nearestStation.name}</p>
-                    <p><strong>Distance to Station:</strong> ${routeToStation.distance.toFixed(2)} km</p>
-                    <p><strong>Distance from Station:</strong> ${routeFromStation.distance.toFixed(2)} km</p>
-                `;
-
-                // Fit map to show all points
-                const allPoints = [...routeToStation.coordinates, ...routeFromStation.coordinates];
-                map.fitBounds(L.latLngBounds(allPoints), { padding: [50, 50] });
-            }
-        } else {
-            // Draw the blue route (sufficient battery)
-            const routeLine = L.polyline(routeCoordinates, {
-                color: '#4285F4',
-                weight: 6,
-                opacity: 0.8,
-                lineCap: 'round',
-                lineJoin: 'round'
-            }).addTo(routeLayer);
-
-            L.polyline(routeCoordinates, {
-                color: '#1a73e8',
-                weight: 8,
-                opacity: 0.4
-            }).addTo(routeLayer);
-
-            // Mark only source and destination
-            markLocations(source, destination);
-
+            findNearestStation(source[0], source[1], batteryNeeded - battery);
             resultDiv.innerHTML = `
-                <p><strong>Distance:</strong> ${distance.toFixed(2)} km</p>
-                <p><strong>Time:</strong> ${duration.toFixed(0)} minutes</p>
-                <p><strong>Battery needed:</strong> ${batteryNeeded.toFixed(1)}%</p>
-                <p style="color: #4caf50;">✓ You have enough battery (${battery}%) to reach your destination.</p>
+                <p>Distance: ${distance.toFixed(2)} km</p>
+                <p>Time: ${duration.toFixed(2)} minutes</p>
+                <p>Battery needed: ${batteryNeeded.toFixed(2)}%. You need to charge your vehicle.</p>
             `;
-
-            map.fitBounds(L.latLngBounds(routeCoordinates), { padding: [50, 50] });
+        } else {
+            resultDiv.innerHTML = `
+                <p>Distance: ${distance.toFixed(2)} km</p>
+                <p>Time: ${duration.toFixed(2)} minutes</p>
+                <p>You have enough battery to reach your destination. Battery needed: ${batteryNeeded.toFixed(2)}%</p>
+            `;
         }
+
+        map.fitBounds(L.latLngBounds(routeCoordinates), { padding: [50, 50] });
 
     } catch (error) {
         console.error("Error calculating route:", error);
-        document.getElementById('result').innerHTML = `<p style="color: #f44336;">Failed to calculate route: ${error.message}</p>`;
+        document.getElementById('result').innerHTML = "Failed to calculate the route. " + error.message;
     }
 }
 
-// Function to calculate a segment route
-async function calculateSegmentRoute(start, end) {
-    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${start[1]},${start[0]}&end=${end[1]},${end[0]}`;
-    
-    let response = await fetch(url);
+async function geocodePlaceName(placeName) {
+    const geocodeUrl = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(placeName)}&key=YOUR_GEOCODE_API_KEY`;
+
+    let response = await fetch(geocodeUrl);
     if (!response.ok) {
-        throw new Error("Failed to calculate segment route");
+        throw new Error("Geocoding failed.");
     }
-
+    
     let data = await response.json();
-    let routeCoordinates, distance, duration;
-
-    if (data.features && data.features.length > 0) {
-        const feature = data.features[0];
-        const geometry = feature.geometry;
-        
-        if (geometry.type === 'LineString') {
-            routeCoordinates = geometry.coordinates.map(coord => [coord[1], coord[0]]);
-        }
-
-        if (feature.properties && feature.properties.summary) {
-            distance = feature.properties.summary.distance / 1000;
-            duration = feature.properties.summary.duration / 60;
-        } else if (feature.properties && feature.properties.segments) {
-            distance = feature.properties.segments[0].distance / 1000;
-            duration = feature.properties.segments[0].duration / 60;
-        }
-    } else if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const geometry = route.geometry;
-
-        if (typeof geometry === 'string') {
-            routeCoordinates = decodePolyline(geometry);
-        } else if (geometry.coordinates) {
-            routeCoordinates = geometry.coordinates.map(coord => [coord[1], coord[0]]);
-        }
-
-        distance = route.summary.distance / 1000;
-        duration = route.summary.duration / 60;
+    if (data.results.length === 0) {
+        throw new Error("Place not found.");
     }
-
-    return { coordinates: routeCoordinates, distance, duration };
+    
+    return [data.results[0].geometry.lat, data.results[0].geometry.lng];
 }
 
-// Function to decode polyline
 function decodePolyline(polyline) {
     const coordinates = [];
     let index = 0, len = polyline.length;
@@ -331,35 +242,49 @@ function decodePolyline(polyline) {
     return coordinates;
 }
 
-// Find nearest charging station
-async function findNearestStation(lat, lon) {
-    try {
-        const response = await fetch('stations.json');
-        const stationsData = await response.json();
-        
-        let nearestStation = null;
-        let minDistance = Infinity;
+function findNearestStation(lat, lon, extraBatteryNeeded) {
+    fetch('stations.json')
+        .then(response => response.json())
+        .then(stationsData => {
+            let nearestStation = null;
+            let minDistance = Infinity;
 
-        stationsData.stations.forEach(station => {
-            let dist = haversineDistance(lat, lon, station.lat, station.lon);
-            if (dist < minDistance) {
-                minDistance = dist;
-                nearestStation = station;
+            stationsData.stations.forEach(station => {
+                let dist = haversineDistance(lat, lon, station.lat, station.lon);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearestStation = station;
+                }
+            });
+
+            if (nearestStation) {
+                if (stationMarker) {
+                    map.removeLayer(stationMarker);
+                }
+
+                const chargingIcon = L.icon({
+                    iconUrl: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 32],
+                    popupAnchor: [0, -32]
+                });
+
+                stationMarker = L.marker([nearestStation.lat, nearestStation.lon], { icon: chargingIcon })
+                    .addTo(map)
+                    .bindPopup(`${nearestStation.name} at (${nearestStation.lat}, ${nearestStation.lon})`)
+                    .openPopup();
+
+                showResult(`You need to charge your vehicle. Nearest Station: ${nearestStation.name}`);
+            } else {
+                showResult("No charging stations found nearby.");
             }
+        })
+        .catch(error => {
+            console.error("Error finding nearest station:", error);
+            showResult("Failed to find the nearest charging station. " + error.message);
         });
-
-        if (nearestStation) {
-            nearestStation.distance = minDistance;
-        }
-
-        return nearestStation;
-    } catch (error) {
-        console.error("Error finding nearest station:", error);
-        return null;
-    }
 }
 
-// Haversine distance calculation
 function haversineDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -370,24 +295,25 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Get location suggestions (updated to prioritize city results)
-async function getLocationSuggestions(query) {
-    try {
-        const response = await fetch(`https://api.openrouteservice.org/geocode/search?api_key=${apiKey}&text=${encodeURIComponent(query)}&size=10`);
-        if (response.ok) {
-            const data = await response.json();
-            return data.features.map(feature => ({
-                name: feature.properties.label,
-                coordinates: feature.geometry.coordinates
-            }));
-        }
-    } catch (error) {
-        console.error("Error fetching suggestions:", error);
-    }
-    return [];
+function showResult(message) {
+    const resultDiv = document.getElementById('result');
+    resultDiv.innerHTML = message;
 }
 
-// Display suggestions dropdown
+async function getLocationSuggestions(query) {
+    const response = await fetch(`https://api.openrouteservice.org/geocode/search?api_key=${apiKey}&text=${encodeURIComponent(query)}&size=5`);
+    if (response.ok) {
+        const data = await response.json();
+        return data.features.map(feature => ({
+            name: feature.properties.label,
+            coordinates: feature.geometry.coordinates
+        }));
+    } else {
+        console.error("Error fetching location suggestions:", response.statusText);
+        return [];
+    }
+}
+
 function displaySuggestions(inputElement, suggestions) {
     let dropdown = inputElement.nextElementSibling;
     if (dropdown && dropdown.classList.contains('suggestions-dropdown')) dropdown.remove();
@@ -411,7 +337,6 @@ function displaySuggestions(inputElement, suggestions) {
     });
 }
 
-// Handle input changes
 async function handleInputChange(event) {
     const query = event.target.value.trim();
     const inputElement = event.target;
@@ -427,11 +352,9 @@ async function handleInputChange(event) {
     }
 }
 
-// Attach event listeners
 document.getElementById('source').addEventListener('input', handleInputChange);
 document.getElementById('destination').addEventListener('input', handleInputChange);
 
-// Hide suggestions when clicking outside
 document.addEventListener('click', (event) => {
     const dropdowns = document.querySelectorAll('.suggestions-dropdown');
     dropdowns.forEach(dropdown => {
@@ -441,41 +364,16 @@ document.addEventListener('click', (event) => {
     });
 });
 
-// Form submit handler
-document.getElementById('ev-form').addEventListener('submit', async function (e) {
+document.getElementById('ev-form').addEventListener('submit', function (e) {
     e.preventDefault();
 
-    try {
-        const battery = parseFloat(document.getElementById('battery').value);
+    let sourceCoords = document.getElementById('source').getAttribute('data-coordinates');
+    let destinationCoords = document.getElementById('destination').getAttribute('data-coordinates');
+    let battery = parseFloat(document.getElementById('battery').value);
 
-        if (isNaN(battery) || battery < 0 || battery > 100) {
-            alert('Please enter a valid battery percentage (0-100)');
-            return;
-        }
+    sourceCoords = JSON.parse(sourceCoords);
+    destinationCoords = JSON.parse(destinationCoords);
 
-        let sourceCoords, destinationCoords;
-
-        const storedSourceCoords = document.getElementById('source').getAttribute('data-coordinates');
-        const storedDestCoords = document.getElementById('destination').getAttribute('data-coordinates');
-
-        if (!storedSourceCoords || !storedDestCoords) {
-            alert('Please select a location from the suggestions dropdown for both source and destination');
-            return;
-        }
-
-        sourceCoords = JSON.parse(storedSourceCoords);
-        sourceCoords = [sourceCoords[1], sourceCoords[0]]; // Convert to [lat, lon]
-
-        destinationCoords = JSON.parse(storedDestCoords);
-        destinationCoords = [destinationCoords[1], destinationCoords[0]];
-
-        console.log("Source [lat, lon]:", sourceCoords);
-        console.log("Destination [lat, lon]:", destinationCoords);
-
-        await calculateRoute(sourceCoords, destinationCoords, battery);
-
-    } catch (error) {
-        console.error("Error in form submission:", error);
-        document.getElementById('result').innerHTML = `<p style="color: #f44336;">Error: ${error.message}</p>`;
-    }
+    markLocations([sourceCoords[1], sourceCoords[0]], [destinationCoords[1], destinationCoords[0]]);
+    calculateRoute([sourceCoords[1], sourceCoords[0]], [destinationCoords[1], destinationCoords[0]], battery);
 });
