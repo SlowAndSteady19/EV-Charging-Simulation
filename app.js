@@ -24,8 +24,9 @@ fetch('stations.json')
     .then(data => {
         data.stations.forEach(station => {
             L.marker([station.lat, station.lon])
-                .addTo(map)
-                .bindPopup(`${station.name}`);
+    .addTo(markersLayer)
+    .bindPopup(`${station.name}`);
+
         });
     })
     .catch(error => console.error("Error fetching stations:", error));
@@ -164,7 +165,7 @@ async function calculateRoute(source, destination, battery) {
         }).addTo(routeLayer);
 
         // Calculate battery consumption
-        let batteryConsumptionPerKm = 0.2;
+        let batteryConsumptionPerKm = 0.33;
         let batteryNeeded = distance * batteryConsumptionPerKm;
 
         // Show results
