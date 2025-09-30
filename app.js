@@ -227,7 +227,7 @@ async function calculateRoute(sourceInput, destinationInput, battery) {
 
 // Function to geocode a place name to lat/lon using OpenCage Geocoder API
 async function geocodePlaceName(placeName) {
-    const geocodeUrl = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(placeName)}&key=YOUR_GEOCODE_API_KEY`;
+    const geocodeUrl = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(placeName)}&key=a2a3756ad76f49e78229a4411f50771c`;
 
     let response = await fetch(geocodeUrl);
     if (!response.ok) {
