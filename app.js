@@ -46,26 +46,26 @@ const destinationIcon = L.icon({
 });
 
 // Form submit event listener
-// document.getElementById('ev-form').addEventListener('submit', function (e) {
-//     e.preventDefault();
+document.getElementById('ev-form').addEventListener('submit', function (e) {
+    e.preventDefault();
 
-//     // Get form values
-//     let source = document.getElementById('source').value.split(",");
-//     let destination = document.getElementById('destination').value.split(",");
-//     let battery = parseFloat(document.getElementById('battery').value);
+    // Get form values
+    let source = document.getElementById('source').value.split(",");
+    let destination = document.getElementById('destination').value.split(",");
+    let battery = parseFloat(document.getElementById('battery').value);
 
-//     // Validate input
-
-
-//     // Convert string lat,lon to float
-//     let sourceLat = parseFloat(source[0].trim()), sourceLon = parseFloat(source[1].trim());
-//     let destinationLat = parseFloat(destination[0].trim()), destinationLon = parseFloat(destination[1].trim());
+    // Validate input
 
 
-//     // Call function to mark locations and calculate route
-//     markLocations([sourceLat, sourceLon], [destinationLat, destinationLon]);
-//     calculateRoute([sourceLat, sourceLon], [destinationLat, destinationLon], battery);
-// });
+    // Convert string lat,lon to float
+    let sourceLat = parseFloat(source[0].trim()), sourceLon = parseFloat(source[1].trim());
+    let destinationLat = parseFloat(destination[0].trim()), destinationLon = parseFloat(destination[1].trim());
+
+
+    // Call function to mark locations and calculate route
+    markLocations([sourceLat, sourceLon], [destinationLat, destinationLon]);
+    calculateRoute([sourceLat, sourceLon], [destinationLat, destinationLon], battery);
+});
 
 // Function to mark source and destination on the map
 function markLocations(source, destination) {
@@ -196,7 +196,7 @@ async function calculateRoute(sourceInput, destinationInput, battery) {
         // Calculate distance, time, and battery consumption
         let distance = data.routes[0].summary.distance / 1000; // Convert meters to kilometers
         let duration = data.routes[0].summary.duration / 60; // Convert seconds to minutes
-        let batteryConsumptionPerKm = 0.33; // Define your own consumption rate
+        let batteryConsumptionPerKm = 0.2; // Define your own consumption rate
         let batteryNeeded = distance * batteryConsumptionPerKm;
 
         // Show the results
@@ -227,7 +227,7 @@ async function calculateRoute(sourceInput, destinationInput, battery) {
 
 // Function to geocode a place name to lat/lon using OpenCage Geocoder API
 async function geocodePlaceName(placeName) {
-    const geocodeUrl = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(placeName)}&key=a2a3756ad76f49e78229a4411f50771c`;
+    const geocodeUrl = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(placeName)}&key=YOUR_GEOCODE_API_KEY`;
 
     let response = await fetch(geocodeUrl);
     if (!response.ok) {
@@ -416,52 +416,21 @@ document.addEventListener('click', (event) => {
 });
 
 // Modify form submit handler to extract coordinates from selected suggestions
-document.getElementById('ev-form').addEventListener('submit', async function (e) {
+document.getElementById('ev-form').addEventListener('submit', function (e) {
     e.preventDefault();
 
-    let sourceInput = document.getElementById('source').value.trim();
-    let destinationInput = document.getElementById('destination').value.trim();
+    // Retrieve coordinates from the source and destination input elements
+    let sourceCoords = document.getElementById('source').getAttribute('data-coordinates');
+    let destinationCoords = document.getElementById('destination').getAttribute('data-coordinates');
     let battery = parseFloat(document.getElementById('battery').value);
 
-    if (!sourceInput || !destinationInput || isNaN(battery)) {
-        alert("Please enter valid source, destination, and battery.");
-        return;
-    }
 
-    let sourceCoords, destinationCoords;
 
-    // Check if user selected a suggestion (has data-coordinates)
-    const sourceData = document.getElementById('source').getAttribute('data-coordinates');
-    const destData = document.getElementById('destination').getAttribute('data-coordinates');
+    // Parse coordinates
+    sourceCoords = JSON.parse(sourceCoords);
+    destinationCoords = JSON.parse(destinationCoords);
 
-    if (sourceData) {
-        sourceCoords = JSON.parse(sourceData);
-    } else {
-        // Geocode manually typed place
-        try {
-            sourceCoords = await geocodePlaceName(sourceInput);
-        } catch (err) {
-            alert("Source place not found.");
-            return;
-        }
-    }
-
-    if (destData) {
-        destinationCoords = JSON.parse(destData);
-    } else {
-        // Geocode manually typed place
-        try {
-            destinationCoords = await geocodePlaceName(destinationInput);
-        } catch (err) {
-            alert("Destination place not found.");
-            return;
-        }
-    }
-
-    // Mark locations and calculate route
-    // Mark locations and calculate route
-markLocations([sourceCoords[0], sourceCoords[1]], [destinationCoords[0], destinationCoords[1]]);
-calculateRoute([sourceCoords[0], sourceCoords[1]], [destinationCoords[0], destinationCoords[1]], battery);
-
+    // Call function to mark locations and calculate route
+    markLocations([sourceCoords[1], sourceCoords[0]], [destinationCoords[1], destinationCoords[0]]);
+    calculateRoute([sourceCoords[1], sourceCoords[0]], [destinationCoords[1], destinationCoords[0]], battery);
 });
-
